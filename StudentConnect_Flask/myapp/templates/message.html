@@ -1,0 +1,41 @@
+<!-- message.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Message Page</title>
+</head>
+<body>
+    <h1>Message Page</h1>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div>
+        {% for message in messages %}
+        <p>{{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <h2>Channel: {{ channel_name }}</h2>
+
+    <h3>Messages</h3>
+    <ul>
+        {% for message in messages %}
+        {% set username = get_username(message[2]) %}
+        <li>{{ username }}: {{ message[3]}} {{message[4]}}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Create New Message</h3>
+
+    <form method="POST" action="/message?channel_id={{ channel_id }}&channel_name={{ channel_name }}">
+        <input type="text" name="message_content" placeholder="Message" required>
+        <button type="submit">Send</button>
+    </form>
+
+    <br>
+    <a href="/channel">Back to Channels</a>
+    <a href="/logout">Logout</a>
+</body>
+</html>
