@@ -2,10 +2,10 @@ from flask import Flask, render_template, request, redirect, session, flash, g
 import sqlite3, threading
 import pandas as pd
 from datetime import datetime
-from main import *
 from time import sleep
 
 app = Flask(__name__)
+app.secret_key = 'secret_key'
 DATABASE = "student_connect.db"
 
 # Function to get the database connection
@@ -239,24 +239,6 @@ def view_database():
 
     return render_template('view_database.html', class_info_rows=class_info_rows, channel_rows=channel_rows, message_rows=message_rows)
 
-def run_p2p(ip_address:str):
-  host = Peer(ip_address, 69)
-  host.start()
-  while True:
-    user_input = input(">")
-    if user_input == "quit" or user_input == "exit":
-      break
-    user_input = user_input.split(' ')
-    if user_input[0] == "connect":
-      host.connect(user_input[1], user_input[2])
-    if user_input[0] == "send":
-      host.send_data(user_input[1].encode("utf-8"))
-
-
-def run_website(ip_address:str):
-  app.run(host=ip_address, port=80, debug=True, use_reloader=False, threaded=False)
     
 if __name__ == '__main__':
-  ip_address = get_ip_address()
-  threading.Thread(target=run_p2p, args=(ip_address,)).start()
-  # threading.Thread(target=run_website, args=(ip_address,)).start()
+    app.run(debug=True)
