@@ -1,12 +1,16 @@
 from flask import Flask, render_template, request, redirect, session, flash, g
+from flask_socketio import SocketIO, emit
 import sqlite3, threading
 import pandas as pd
 from datetime import datetime
 from time import sleep
 
 app = Flask(__name__)
-app.secret_key = 'secret_key'
+app.config['SECRET_KEY'] = 'secret_key'
+socketio = SocketIO(app)
 DATABASE = "student_connect.db"
+
+# 以下、変更なし
 
 # Function to get the database connection
 def get_db():
@@ -167,6 +171,7 @@ def channel():
                 cursor.execute("INSERT INTO Channel (name, created_by) VALUES (?, ?)", (channel_name, user_id))
                 db.commit()
                 flash('Channel created successfully.', 'success')
+                socketio.emit('channel_created', {'channel_name': channel_name}, broadcast=True)
         else:
             channel_id = request.form['channel_id']
 
@@ -175,6 +180,7 @@ def channel():
                 cursor.execute("DELETE FROM Channel WHERE id = ?", (channel_id,))
                 db.commit()
                 flash('Channel deleted successfully.', 'success')
+                socketio.emit('channel_deleted', {'channel_id': channel_id}, broadcast=True)
 
             elif 'select' in request.form:
                 selected_channel = request.form.get('select')
@@ -219,6 +225,7 @@ def message():
             cursor.execute("INSERT INTO Channel (name) VALUES (?)", (new_channel_name,))
             db.commit()
             flash('Channel created successfully.', 'success')
+            socketio.emit('channel_created', {'channel_name': new_channel_name}, broadcast=True)
             return redirect('/channel')
 
         db = get_db()
@@ -228,6 +235,7 @@ def message():
                    (channel_id, user_id, message_content))
         db.commit()
         flash('Message posted successfully.', 'success')
+        socketio.emit('message_posted', {'channel_id': channel_id}, broadcast=True)
 
     channel_id = request.args.get('channel_id')
     channel_name = request.args.get('channel_name')
@@ -265,6 +273,6 @@ def view_database():
 
     return render_template('view_database.html', class_info_rows=class_info_rows, channel_rows=channel_rows, message_rows=message_rows)
 
-    
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)

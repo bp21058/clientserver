@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+import time
 
 async def send_message():
     async with websockets.connect('ws://localhost:8765') as websocket:
@@ -30,33 +31,28 @@ async def send_message():
 
             elif message == '2':
                 print("Sign up")
-                username = input("Enter username: ")
-                password = input("Enter password: ")
-                email = input("Enter email: ")
-
-                class_num = "\"" + "5261" + "\""
-                username = "\"" + username + "\""
-                password = "\"" + password + "\""
-                email = "\"" + email + "\""
+                username = str(input("Enter username: "))
+                password = str(input("Enter password: "))
+                email = str(input("Enter email: "))
                 
-
                 message = "SELECT COUNT(*) FROM Class_info WHERE username ='" + username + "';"
                 await websocket.send(message)
                 response = await websocket.recv()
-                print(response)
-
-                if response == "[(0,)]":
-                    message = "SELECT COUNT(*) FROM Class_info;"
-                    await websocket.send(message)
-                    response = await websocket.recv()
                 
-                    message = "INSERT INTO Class_info (subject, username, password, email) VALUES (" + class_num + ", " + username + ", " + password + ", " + email + ");"
-                    await websocket.send(message)
-                    response = await websocket.recv()
-                    print("Sign up Success!")
-                else:
-                    print("This username is already used. Please try again.")
+                if response == "[(0,)]":
+                    query = "INSERT INTO Class_info (subject, username, password, email) VALUES (?, ?, ?, ?)"
+                    await websocket.send(query)
+                    time.sleep(1)
+                    await websocket.send(username)
+                    time.sleep(1)
+                    await websocket.send(password)
+                    time.sleep(1)
+                    await websocket.send(email)
 
+                    response = await websocket.recv()
+                    print(response)
+                else:
+                    print("Username is already used. Please try again.") 
             elif message == '3':
                 print("Deback")
                 message = "SELECT * FROM Class_info;"
