@@ -5,7 +5,7 @@ async def send_message():
     async with websockets.connect('ws://localhost:8765') as websocket:
         while True:
             print("1: Login, 2: Sign up, 3: Deback, 4: Quit")
-            message = input("Enter a command (or 'exit' to quit): ")
+            message = input("Enter a command: ")
             if message == 'exit':
                 break
             elif message == '1':
@@ -13,12 +13,12 @@ async def send_message():
                 username = input("Enter username: ")
                 password = input("Enter password: ")
                 
-                message = "SELECT COUNT(*) FROM Classroom WHERE username ='" + username + "';"
+                message = "SELECT COUNT(*) FROM Class_info WHERE username ='" + username + "';"
                 await websocket.send(message)
                 response = await websocket.recv()
                 
                 if response == "[(1,)]":
-                    message = "SELECT password FROM Classroom WHERE username ='" + username + "';"
+                    message = "SELECT password FROM Class_info WHERE username ='" + username + "';"
                     await websocket.send(message)
                     response = await websocket.recv()
                     if response == "[('" + password + "',)]":
@@ -32,18 +32,25 @@ async def send_message():
                 print("Sign up")
                 username = input("Enter username: ")
                 password = input("Enter password: ")
+                email = input("Enter email: ")
 
-                message = "SELECT COUNT(*) FROM Classroom WHERE username ='" + username + "';"
+                class_num = "\"" + "5261" + "\""
+                username = "\"" + username + "\""
+                password = "\"" + password + "\""
+                email = "\"" + email + "\""
+                
+
+                message = "SELECT COUNT(*) FROM Class_info WHERE username ='" + username + "';"
                 await websocket.send(message)
                 response = await websocket.recv()
+                print(response)
 
                 if response == "[(0,)]":
-                    message = "SELECT COUNT(*) FROM Classroom;"
+                    message = "SELECT COUNT(*) FROM Class_info;"
                     await websocket.send(message)
                     response = await websocket.recv()
-                    # print(response[2])
                 
-                    message = "INSERT INTO Classroom VALUES ( " + str(int(response[2])+1) + ", 5261, '" + username + "', '" + password + "');"
+                    message = "INSERT INTO Class_info (subject, username, password, email) VALUES (" + class_num + ", " + username + ", " + password + ", " + email + ");"
                     await websocket.send(message)
                     response = await websocket.recv()
                     print("Sign up Success!")
@@ -52,7 +59,7 @@ async def send_message():
 
             elif message == '3':
                 print("Deback")
-                message = "SELECT * FROM Classroom;"
+                message = "SELECT * FROM Class_info;"
                 await websocket.send(message)
                 response = await websocket.recv()
                 print(response)

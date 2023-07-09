@@ -11,7 +11,7 @@ async def handle_message(websocket, path):
         await websocket.send(response)
 
 def execute_query(query):
-    conn = sqlite3.connect('test.db')
+    conn = sqlite3.connect('test_db.db')
     cursor = conn.cursor()
     cursor.execute(query)
     result = cursor.fetchall()
