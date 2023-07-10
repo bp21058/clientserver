@@ -1,48 +1,41 @@
 from flask import Flask, render_template, request, redirect, session, flash, g
 from flask_socketio import SocketIO, emit
-import sqlite3, threading
-import pandas as pd
-from datetime import datetime
-from time import sleep
+import sqlite3
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_key'
 socketio = SocketIO(app)
 
+DATABASE = "student_connect.db"
+
 # Function to get the database connection
 def get_db():
     db = getattr(g, '_database', None)
-    if db is None and session.get('subject'):
-        if session['subject'] == 'Advanced Biofluid Engineering':
-            db = g._database = sqlite3.connect("advanced_biofluid.db")
-        elif session['subject'] == 'ICT Systems Design':
-            db = g._database = sqlite3.connect("ict_systems_design.db")
-        elif session['subject'] == 'Electronic Circuits and Systems':
-            db = g._database = sqlite3.connect("electronic_circuits_and_systems.db")
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
         db.execute('PRAGMA foreign_keys = ON')  # Enable foreign key constraint
     return db
 
-
-# Function to check if a user exists
-def user_exists(username, password):
+# Function to check if a user exists based on subject
+def user_exists(subject, username, password):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT COUNT(*) FROM Class_info WHERE username = ? AND password = ?", (username, password))
+    cursor.execute("SELECT COUNT(*) FROM {}_Class_info WHERE username = ? AND password = ?".format(subject.replace(" ", "_")), (username, password))
     result = cursor.fetchone()
     return result[0] > 0
 
-# Function to get the user ID from the username
-def get_user_id(username):
+# Function to get the user ID from the username based on subject
+def get_user_id(subject, username):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT id FROM Class_info WHERE username = ?", (username,))
+    cursor.execute("SELECT id FROM {}_Class_info WHERE username = ?".format(subject.replace(" ", "_")), (username,))
     result = cursor.fetchone()
     if result:
         return result[0]
     else:
         return None
 
-# Function to close the database connection at the end of the request
+# Function to close the database connection at the end of the request based on subject
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
@@ -64,7 +57,7 @@ def sign_up():
         email = request.form['email']
 
         # Check if the user already exists
-        if user_exists(username, password):
+        if user_exists(subject, username, password):
             flash('User already exists. Please log in.', 'error')
             return redirect('/login')
         
@@ -75,8 +68,7 @@ def sign_up():
         # Create a new user
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("INSERT INTO Class_info (subject, username, password, email) VALUES (?, ?, ?, ?)",
-                       (subject, username, password, email))
+        cursor.execute("INSERT INTO {}_Class_info (subject, username, password, email) VALUES (?, ?, ?, ?)".format(subject.replace(" ", "_")), (subject, username, password, email))
         db.commit()
         flash('Sign up successful. Please log in.', 'success')
         return redirect('/login')
@@ -91,7 +83,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         # Check if the user exists
-        if user_exists(username, password):
+        if user_exists(subject, username, password):
             # Successful login
             session['subject'] = subject
             session['username'] = username
@@ -111,7 +103,7 @@ def change_username():
         db = get_db()
         cursor = db.cursor()
         # Implement the update of the username in the Class_info table
-        cursor.execute("UPDATE Class_info SET username = ? WHERE username = ?", (new_username, current_username))
+        cursor.execute("UPDATE {}_Class_info SET username = ? WHERE username = ?".format(subject.replace(" ", "_")), (new_username, current_username))
         db.commit()
         flash('Username changed successfully.', 'success')
         return redirect('/login')
@@ -128,7 +120,7 @@ def change_password():
         db = get_db()
         cursor = db.cursor()
         # Implement the update of the password in the Class_info table
-        cursor.execute("UPDATE Class_info SET password = ? WHERE username = ?", (new_password, current_username))
+        cursor.execute("UPDATE {}_Class_info SET password = ? WHERE username = ?".format(subject.replace(" ", "_")), (new_password, current_username))
         db.commit()
         flash('Password changed successfully.', 'success')
         return redirect('/login')
@@ -140,24 +132,25 @@ def channel():
     if 'username' not in session:
         return redirect('/login')
 
+    subject = session['subject']
+
     db = get_db()
     cursor = db.cursor()
 
     if request.method == 'POST':
         if 'channel_name' in request.form:
             channel_name = request.form['channel_name']
-
             # Check existing channel names to prevent duplicates
-            cursor.execute("SELECT COUNT(*) FROM Channel WHERE name = ?", (channel_name,))
+            cursor.execute("SELECT COUNT(*) FROM {}_Channel WHERE name = ?".format(subject.replace(" ", "_")), (channel_name,))
             result = cursor.fetchone()
             if result[0] > 0:
                 flash('Channel name already exists.', 'error')
             else:
                 # Get the user ID
-                user_id = get_user_id(session['username'])
+                user_id = get_user_id(subject, session['username'])
 
                 # Register the channel
-                cursor.execute("INSERT INTO Channel (name, created_by) VALUES (?, ?)", (channel_name, user_id))
+                cursor.execute("INSERT INTO {}_Channel (name, created_by) VALUES (?, ?)".format(subject.replace(" ", "_")), (channel_name, user_id))
                 db.commit()
                 flash('Channel created successfully.', 'success')
                 socketio.emit('channel_created', {'channel_name': channel_name}, broadcast=True)
@@ -169,7 +162,7 @@ def channel():
                     flash('Cannot delete General channel.', 'error')
                     return redirect('/channel')
                 # Delete the channel
-                cursor.execute("DELETE FROM Channel WHERE id = ?", (channel_id,))
+                cursor.execute("DELETE FROM {}_Channel WHERE id = ?".format(subject.replace(" ", "_")), (channel_id,))
                 db.commit()
                 flash('Channel deleted successfully.', 'success')
                 socketio.emit('channel_deleted', {'channel_id': channel_id}, broadcast=True)
@@ -179,16 +172,16 @@ def channel():
                 channel_id, channel_name = selected_channel.split(':')
                 return redirect('/message?channel_id=' + channel_id + '&channel_name=' + channel_name)
 
-    cursor.execute("SELECT * FROM Channel")
+    cursor.execute("SELECT * FROM {}_Channel".format(subject.replace(" ", "_")))
     channels = cursor.fetchall()
 
     return render_template('channel.html', channels=channels)
 
-# Function to get the username from the user ID
-def get_username(user_id):
+# Function to get the username from the user ID based on subject
+def get_username(subject, user_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT username FROM Class_info WHERE id = ?", (user_id,))
+    cursor.execute("SELECT username FROM {}_Class_info WHERE id = ?".format(subject.replace(" ", "_")), (user_id,))
     result = cursor.fetchone()
     if result:
         return result[0]
@@ -197,13 +190,18 @@ def get_username(user_id):
 
 @app.before_request
 def register_jinja_globals():
-    app.jinja_env.globals['get_username'] = get_username
+    subject = session.get('subject')
+    if subject:
+        app.jinja_env.globals['get_username'] = get_username
+        app.jinja_env.globals['subject'] = subject
 
 # Message page
 @app.route('/message', methods=['GET', 'POST'])
 def message():
     if 'username' not in session:
         return redirect('/login')
+
+    subject = session['subject']
 
     if request.method == 'POST':
         message_content = request.form['message_content']
@@ -214,7 +212,7 @@ def message():
             new_channel_name = message_content[3:]
             db = get_db()
             cursor = db.cursor()
-            cursor.execute("INSERT INTO Channel (name) VALUES (?)", (new_channel_name,))
+            cursor.execute("INSERT INTO {}_Channel (name) VALUES (?)".format(subject.replace(" ", "_")), (new_channel_name,))
             db.commit()
             flash('Channel created successfully.', 'success')
             socketio.emit('channel_created', {'channel_name': new_channel_name}, broadcast=True)
@@ -222,9 +220,8 @@ def message():
 
         db = get_db()
         cursor = db.cursor()
-        user_id = get_user_id(session['username'])
-        cursor.execute("INSERT INTO Message (channel_id, user_id, content) VALUES (?, ?, ?)",
-                   (channel_id, user_id, message_content))
+        user_id = get_user_id(subject, session['username'])
+        cursor.execute("INSERT INTO {}_Message (channel_id, user_id, content) VALUES (?, ?, ?)".format(subject.replace(" ", "_")), (channel_id, user_id, message_content))
         db.commit()
         flash('Message posted successfully.', 'success')
         socketio.emit('message_posted', {'channel_id': channel_id}, broadcast=True)
@@ -234,7 +231,7 @@ def message():
 
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM Message WHERE channel_id = ?", (channel_id,))
+    cursor.execute("SELECT * FROM {}_Message WHERE channel_id = ?".format(subject.replace(" ", "_")), (channel_id,))
     messages = cursor.fetchall()
 
     return render_template('message.html', channel_id=channel_id, channel_name=channel_name, messages=messages)
@@ -245,26 +242,5 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# Debugging purposes
-@app.route('/view_database')
-def view_database():
-    db = get_db()
-    cursor = db.cursor()
-
-    # Get the contents of the Class_info table
-    cursor.execute("SELECT * FROM Class_info")
-    class_info_rows = cursor.fetchall()
-
-    # Get the contents of the Channel table
-    cursor.execute("SELECT * FROM Channel")
-    channel_rows = cursor.fetchall()
-
-    # Get the contents of the Message table
-    cursor.execute("SELECT * FROM Message")
-    message_rows = cursor.fetchall()
-
-    return render_template('view_database.html', class_info_rows=class_info_rows, channel_rows=channel_rows, message_rows=message_rows)
-
-
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
