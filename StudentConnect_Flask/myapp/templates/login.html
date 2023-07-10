@@ -16,8 +16,13 @@
   {% endwith %}
   <form action="/login" method="post">
     <div>
-      <label for="subject">Classroom No. :</label>
-      <input type="text" name="subject" id="subject" required>
+      <label for="subject">Subject:</label>
+      <select id="subject" name="subject" required>
+        <option value="" disabled selected>Select subject</option>
+        <option value="T1">Advanced Biofluid Engineering</option>
+        <option value="T2">ICT Systems Design</option>
+        <option value="T3T4">Electronic Circuits and Systems</option>
+      </select>
     </div>
     <div>
       <label for="username">Username:</label>
@@ -31,7 +36,7 @@
   </form>
   <p>Change your <a href="/change_username">username</a></p>
   <p>Change your <a href="/change_password">password</a></p>
-  <p>Don't have an account? <a href="/register">Register</a></p>
+  <p>Don't have an account? <a href="/sign_up">Sign Up</a></p>
   <p>Go back to <a href="/">Home</a></p>
 </body>
 </html>

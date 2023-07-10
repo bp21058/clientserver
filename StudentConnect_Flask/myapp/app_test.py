@@ -64,6 +64,10 @@ def sign_up():
         if user_exists(username, password):
             flash('User already exists. Please log in.', 'error')
             return redirect('/login')
+        
+        if '@shibaura-it.ac.jp' in email:
+            flash('Please use your Shibaura Institute of Technology email.', 'error')
+            return redirect('/sign_up')
 
         # Create a new user
         db = get_db()
@@ -75,24 +79,6 @@ def sign_up():
         return redirect('/login')
 
     return render_template('sign_up.html')
-
-
-# Teacher page
-@app.route('/teacher', methods=['GET', 'POST'])
-def teacher():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            # File processing and database storage implementation
-            df = pd.read_excel(file)
-            # Implement DataFrame processing and storing data into the database
-            db = get_db()
-            df.to_sql('Class_info', db, if_exists='append', index=False)  # Store data into the Class_info table
-            flash('File uploaded successfully.', 'success')
-            return redirect('/login')
-        else:
-            flash('No file uploaded.', 'error')
-    return render_template('teacher.html')
 
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
@@ -176,6 +162,9 @@ def channel():
             channel_id = request.form['channel_id']
 
             if 'delete' in request.form:
+                if channel_name == 'General':
+                    flash('Cannot delete General channel.', 'error')
+                    return redirect('/channel')
                 # Delete the channel
                 cursor.execute("DELETE FROM Channel WHERE id = ?", (channel_id,))
                 db.commit()
