@@ -8,7 +8,7 @@ from time import sleep
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_key'
 socketio = SocketIO(app)
-DATABASE = os.path.abspath('student_connect.db')
+DATABASE = os.path.abspath('StudentConnect_Flask/myapp/student_connect.db')
 
 # Function to get the database connection
 def get_db():
