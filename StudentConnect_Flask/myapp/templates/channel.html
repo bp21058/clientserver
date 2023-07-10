@@ -39,7 +39,9 @@
         <select name="channel_id" required>
             <option value="" selected disabled>Select Channel</option>
             {% for channel in channels %}
+            {% if channel[1] != 'General' %}
             <option value="{{ channel[0] }}">{{ channel[1] }}</option>
+            {% endif %}
             {% endfor %}
         </select>
         <button type="submit" name="delete">Delete</button>
