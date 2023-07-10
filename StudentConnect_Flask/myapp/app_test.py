@@ -8,17 +8,20 @@ from time import sleep
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_key'
 socketio = SocketIO(app)
-DATABASE = "student_connect.db"
-
-# 以下、変更なし
 
 # Function to get the database connection
 def get_db():
     db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+    if db is None and session.get('subject'):
+        if session['subject'] == 'Advanced Biofluid Engineering':
+            db = g._database = sqlite3.connect("advanced_biofluid.db")
+        elif session['subject'] == 'ICT Systems Design':
+            db = g._database = sqlite3.connect("ict_systems_design.db")
+        elif session['subject'] == 'Electronic Circuits and Systems':
+            db = g._database = sqlite3.connect("electronic_circuits_and_systems.db")
         db.execute('PRAGMA foreign_keys = ON')  # Enable foreign key constraint
     return db
+
 
 # Function to check if a user exists
 def user_exists(username, password):
